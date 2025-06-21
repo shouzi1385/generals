@@ -1,0 +1,2881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generals IO 网页版 - 优化版</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #1a2a6c);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 350px;
+            gap: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px 0;
+            grid-column: 1 / -1;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            animation: headerGlow 3s infinite alternate;
+        }
+        
+        @keyframes headerGlow {
+            0% { box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5); }
+            100% { box-shadow: 0 5px 25px rgba(255, 0, 0, 0.7); }
+        }
+        
+        h1 {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+        }
+        
+        .game-info {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .game-info span {
+            font-size: 1.2rem;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 15px;
+            border-radius: 20px;
+            min-width: 120px;
+        }
+        
+        .game-area {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        
+        .map-container {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            overflow: auto;
+            position: relative;
+            max-height: 70vh;
+        }
+        
+        .game-map {
+            display: grid;
+            grid-template-columns: repeat(var(--map-size, 10), 1fr);
+            gap: 0px; /* 减小间距 */
+            margin: 0 auto;
+            width: max-content;
+        }
+        
+        .tile {
+            width: 50px; /* 缩小格子大小 */
+            height: 50px; /* 缩小格子大小 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.3); /* 减小边框厚度 */
+            border-radius: 4px; /* 减小圆角 */
+            font-size: 10px;
+            font-weight: bold;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            animation: tileAppear 0.3s ease-out;
+        }
+        
+        @keyframes tileAppear {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .tile:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            z-index: 10;
+        }
+        
+        .tile.lighten::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid gold;
+            border-radius: 4px;
+            pointer-events: none;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 0.5; }
+            50% { opacity: 1; }
+            100% { opacity: 0.5; }
+        }
+        
+        .tile-content {
+            z-index: 2;
+            text-shadow: 1px 1px 1px black;
+            font-size: 12px; /* 调整字体大小 */
+            position: relative;
+            top: -8px; /* 调整位置 */
+            font-weight: bold;
+        }
+        
+        .tile-type {
+            font-size: 20px; /* 调整字体大小 */
+            margin-top: 2px;
+            position: absolute;
+            z-index: 1;
+        }
+        
+        .controls {
+            background: rgba(0, 0, 0, 0.6);
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .panel {
+            background: rgba(30, 30, 60, 0.8);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
+        }
+        
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #4fc3f7;
+            border-bottom: 2px solid #4fc3f7;
+            padding-bottom: 5px;
+        }
+        
+        .control-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        button {
+            background: linear-gradient(to bottom, #4a00e0, #8e2de2);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: all 0.3s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button:hover {
+            background: linear-gradient(to bottom, #5a20e0, #9e3df2);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: rotate(30deg);
+            transition: all 0.6s;
+        }
+        
+        button:hover::after {
+            transform: translateY(100%) rotate(30deg);
+        }
+        
+        .player-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        select, input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            background: rgba(255, 255, 255, 0.9);
+            margin-bottom: 10px;
+        }
+        
+        .direction-controls {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .dir-btn {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 40px;
+            background: rgba(50, 50, 100, 0.8);
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+            font-weight: bold;
+        }
+        
+        .dir-btn:hover {
+            background: rgba(70, 70, 150, 0.9);
+            transform: scale(1.05);
+        }
+        
+        .dir-btn.north {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        .dir-btn.south {
+            grid-column: 2;
+            grid-row: 3;
+        }
+        
+        .dir-btn.west {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        .dir-btn.east {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        .messages {
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column-reverse;
+        }
+        
+        .message {
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            animation: messageAppear 0.3s;
+        }
+        
+        @keyframes messageAppear {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        .leaderboard {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .team-rank {
+            background: rgba(50, 50, 80, 0.7);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .player-rank {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background: rgba(30, 30, 60, 0.5);
+            margin-top: 5px;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .selected {
+            box-shadow: 0 0 0 3px yellow;
+            animation: selectedPulse 1.5s infinite;
+        }
+        
+        @keyframes selectedPulse {
+            0% { box-shadow: 0 0 0 3px yellow; }
+            50% { box-shadow: 0 0 0 6px rgba(255, 255, 0, 0.5); }
+            100% { box-shadow: 0 0 0 3px yellow; }
+        }
+        
+        .color-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        .key-hint {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+        
+        /* 开始界面样式 */
+        #start-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+        }
+        
+        .start-container {
+            background: linear-gradient(135deg, #1a2a6c, #8e44ad);
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            animation: containerAppear 0.5s ease-out;
+        }
+        
+        @keyframes containerAppear {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        
+        .start-title {
+            font-size: 3.5rem;
+            margin-bottom: 30px;
+            color: #4fc3f7;
+            text-shadow: 0 0 15px rgba(79, 195, 247, 0.7);
+            animation: titleGlow 2s infinite alternate;
+        }
+        
+        @keyframes titleGlow {
+            0% { text-shadow: 0 0 15px rgba(79, 195, 247, 0.7); }
+            100% { text-shadow: 0 0 25px rgba(79, 195, 247, 1); }
+        }
+        
+        .map-size-selector {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        
+        .size-option {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .size-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-5px);
+            border-color: #4fc3f7;
+        }
+        
+        .size-option.selected {
+            background: rgba(79, 195, 247, 0.2);
+            border-color: #4fc3f7;
+            transform: scale(1.05);
+        }
+        
+        .size-option h3 {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        
+        .size-option p {
+            color: #ccc;
+            font-size: 1rem;
+        }
+        
+        .start-button {
+            background: linear-gradient(to right, #00c853, #00b248);
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            margin-top: 20px;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .start-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 7px 20px rgba(0, 200, 83, 0.5);
+        }
+        
+        /* 结束界面样式 */
+        #end-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+        }
+        
+        .end-container {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f);
+            padding: 50px;
+            border-radius: 20px;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.7);
+            animation: containerAppear 0.5s ease-out;
+        }
+        
+        .end-title {
+            font-size: 4rem;
+            margin-bottom: 30px;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.7);
+        }
+        
+        .victory {
+            color: #4CAF50;
+            animation: victoryGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes victoryGlow {
+            0% { text-shadow: 0 0 10px rgba(76, 175, 80, 0.7); }
+            100% { text-shadow: 0 0 30px rgba(76, 175, 80, 1); }
+        }
+        
+        .defeat {
+            color: #f44336;
+            animation: defeatGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes defeatGlow {
+            0% { text-shadow: 0 0 10px rgba(244, 67, 54, 0.7); }
+            100% { text-shadow: 0 0 30px rgba(244, 67, 54, 1); }
+        }
+        
+        .end-message {
+            font-size: 1.5rem;
+            margin-bottom: 30px;
+            color: #e0e0e0;
+        }
+        
+        .restart-button {
+            background: linear-gradient(to right, #2196F3, #21CBF3);
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            margin-top: 20px;
+            border: none;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .restart-button:hover {
+            transform: scale(1.05);
+            box-shadow: 0 7px 20px rgba(33, 150, 243, 0.5);
+        }
+        
+        .game-state-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .state-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #2ecc71;
+        }
+        
+        .state-dot.auto {
+            background-color: #f1c40f;
+        }
+        
+        .state-dot.paused {
+            background-color: #e74c3c;
+        }
+        
+        /* AI集结可视化效果 */
+        .gathering {
+            animation: gatheringGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes gatheringGlow {
+            0% { box-shadow: 0 0 0 3px rgba(255, 165, 0, 0.5); }
+            100% { box-shadow: 0 0 0 6px rgba(255, 165, 0, 0.9); }
+        }
+        
+        .gather-target {
+            animation: targetGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes targetGlow {
+            0% { box-shadow: 0 0 0 3px rgba(0, 255, 0, 0.5); }
+            100% { box-shadow: 0 0 0 6px rgba(0, 255, 0, 0.9); }
+        }
+        
+        .ai-move {
+            animation: aiMoveGlow 1.5s infinite alternate;
+        }
+        
+        @keyframes aiMoveGlow {
+            0% { box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.5); }
+            100% { box-shadow: 0 0 0 6px rgba(255, 0, 0, 0.9); }
+        }
+        
+        .ai-info-panel {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        
+        /* AI可视化控制按钮 */
+        .ai-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .ai-control-btn {
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: all 0.3s;
+            background: rgba(50, 50, 100, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .ai-control-btn.active {
+            background: linear-gradient(to bottom, #4a00e0, #8e2de2);
+            border-color: #4fc3f7;
+            box-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+        
+        .ai-control-btn:hover {
+            background: rgba(70, 70, 150, 0.9);
+        }
+        
+        .ai-status-line {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+            font-size: 12px;
+        }
+        
+        .ai-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .gathering-dot { background-color: #ff8c00; }
+        .target-dot { background-color: #00ff00; }
+        .ai-move-dot { background-color: #ff0000; }
+        
+        /* AI数量选择器 */
+        .ai-count-selector {
+            margin: 20px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .ai-count-option {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .ai-count-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-3px);
+            border-color: #4fc3f7;
+        }
+        
+        .ai-count-option.selected {
+            background: rgba(79, 195, 247, 0.2);
+            border-color: #4fc3f7;
+        }
+        
+        /* 隐藏非明示格子按钮 */
+        .hide-fog-btn {
+            background: linear-gradient(to bottom, #9c27b0, #673ab7);
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-align: center;
+            transition: all 0.3s;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-top: 10px;
+        }
+        
+        .hide-fog-btn.active {
+            background: linear-gradient(to bottom, #7b1fa2, #512da8);
+            box-shadow: 0 0 10px rgba(156, 39, 176, 0.5);
+        }
+        
+        .hide-fog-btn:hover {
+            background: rgba(123, 31, 162, 0.9);
+        }
+        
+        /* 非明示格子样式 */
+        .tile.fog {
+            background: rgba(30, 30, 30, 0.8) !important;
+            color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .tile.fog .tile-content,
+        .tile.fog .tile-type {
+            visibility: hidden;
+        }
+        
+        @media (max-width: 900px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+            
+            .tile {
+                width: 35px;
+                height: 35px;
+                font-size: 8px;
+            }
+            
+            .tile-content {
+                font-size: 10px;
+                top: -6px;
+            }
+            
+            .tile-type {
+                font-size: 14px;
+            }
+            
+            .start-container, .end-container {
+                padding: 20px;
+            }
+            
+            .start-title, .end-title {
+                font-size: 2.5rem;
+            }
+            
+            .game-info {
+                flex-direction: column;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            .control-buttons {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 600px) {
+            .tile {
+                width: 25px;
+                height: 25px;
+            }
+            
+            .tile-type {
+                font-size: 12px;
+            }
+            
+            .tile-content {
+                font-size: 8px;
+                top: -4px;
+            }
+            
+            .player-controls {
+                grid-template-columns: 1fr;
+            }
+            
+            .game-info span {
+                font-size: 1rem;
+                padding: 6px 10px;
+                min-width: 100px;
+            }
+            
+            .ai-controls {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 开始界面 -->
+    <div id="start-screen">
+        <div class="start-container">
+            <h1 class="start-title">Generals IO</h1>
+            <p>征服领土，击败AI机器人，成为战场的主宰！</p>
+            
+            <div class="map-size-selector">
+                <div class="size-option selected" data-size="10">
+                    <h3>小型地图 (10×10)</h3>
+                    <p>快速战斗，适合新手入门</p>
+                </div>
+                <div class="size-option" data-size="15">
+                    <h3>中型地图 (15×15)</h3>
+                    <p>平衡的游戏体验，推荐选择</p>
+                </div>
+                <div class="size-option" data-size="20">
+                    <h3>大型地图 (20×20)</h3>
+                    <p>史诗级战斗，挑战策略极限</p>
+                </div>
+            </div>
+            
+            <div class="ai-count-selector">
+                <div class="ai-count-option selected" data-count="1">
+                    <h3>1名AI对手</h3>
+                    <p>简单难度，适合初学者</p>
+                </div>
+                <div class="ai-count-option" data-count="2">
+                    <h3>2名AI对手</h3>
+                    <p>中等难度，挑战策略</p>
+                </div>
+                <div class="ai-count-option" data-count="3">
+                    <h3>3名AI对手</h3>
+                    <p>困难难度，高手对决</p>
+                </div>
+            </div>
+            
+            <button class="start-button" id="start-button">开始游戏</button>
+        </div>
+    </div>
+    
+    <!-- 结束界面 -->
+    <div id="end-screen">
+        <div class="end-container">
+            <h1 class="end-title victory" id="end-title">胜利！</h1>
+            <p class="end-message" id="end-message">你成功征服了所有领土！</p>
+            <button class="restart-button" id="restart-button">再来一局</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>Generals IO 网页版</h1>
+            <p>策略征服游戏 - 占领领土，击败AI机器人！</p>
+            <div class="game-info">
+                <span>半回合: <span id="halfturn">0</span></span>
+                <span>轮次: <span id="round">0</span></span>
+                <span>当前玩家: <span id="current-player">1</span></span>
+            </div>
+            <div class="game-state-indicator">
+                <div class="state-dot paused" id="state-dot"></div>
+                <span id="state-text">游戏暂停中</span>
+            </div>
+        </header>
+        
+        <div class="game-area">
+            <div class="map-container">
+                <h2>游戏地图</h2>
+                <div class="game-map" id="game-map"></div>
+            </div>
+            
+            <div class="panel">
+                <h2>游戏控制</h2>
+                <div class="control-buttons">
+                    <button id="tick-btn">执行半回合 (Tick)</button>
+                    <button id="clear-btn">清空队列</button>
+                    <button id="auto-btn">自动模式</button>
+                </div>
+                
+                <div class="player-controls">
+                    <div>
+                        <label for="player-select">选择玩家:</label>
+                        <select id="player-select">
+                            <option value="1">玩家 1</option>
+                            <option value="2">玩家 2 (AI)</option>
+                            <option value="3">玩家 3 (AI)</option>
+                            <option value="4">玩家 4 (AI)</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="half-move">移动一半单位:</label>
+                        <input type="checkbox" id="half-move">
+                    </div>
+                </div>
+                
+                <div class="direction-controls">
+                    <div class="dir-btn north" data-dir="n">北 (N)</div>
+                    <div class="dir-btn south" data-dir="s">南 (S)</div>
+                    <div class="dir-btn west" data-dir="w">西 (W)</div>
+                    <div class="dir-btn east" data-dir="e">东 (E)</div>
+                </div>
+                
+                <div class="key-hint">
+                    <p>键盘控制: W (北), A (西), S (南), D (东)</p>
+                    <p>选择格子后，按方向键移动单位</p>
+                </div>
+                
+                <div class="hide-fog-btn" id="hide-fog-btn">显示所有格子</div>
+                
+                <div class="ai-controls">
+                    <div class="ai-control-btn active" id="gathering-btn">集结兵力</div>
+                    <div class="ai-control-btn active" id="target-btn">攻击目标</div>
+                    <div class="ai-control-btn active" id="aimove-btn">AI移动</div>
+                </div>
+                
+                <div class="color-legend">
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #3498db;"></div>
+                        <span>玩家 1</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #e74c3c;"></div>
+                        <span>AI机器人</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #95a5a6;"></div>
+                        <span>中立</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #2c3e50;"></div>
+                        <span>山区</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #8e44ad;"></div>
+                        <span>要塞</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #16a085;"></div>
+                        <span>沼泽</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #ff8c00;"></div>
+                        <span>AI集结点</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-color" style="background-color: #333;"></div>
+                        <span>战争迷雾</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="panel">
+                <h2>游戏消息</h2>
+                <div class="messages" id="messages"></div>
+            </div>
+            
+            <div class="panel">
+                <h2>队伍排名</h2>
+                <div class="leaderboard" id="leaderboard"></div>
+                
+                <!-- 将AI信息栏移动到这里 -->
+                <div class="ai-info-panel" id="ai-info">
+                    <strong>AI策略信息</strong>
+                    <div id="ai-status">等待游戏开始</div>
+                    <div class="ai-status-line">
+                        <div class="ai-status-dot gathering-dot"></div>
+                        <span id="gathering-status">集结兵力: 开启</span>
+                    </div>
+                    <div class="ai-status-line">
+                        <div class="ai-status-dot target-dot"></div>
+                        <span id="target-status">攻击目标: 开启</span>
+                    </div>
+                    <div class="ai-status-line">
+                        <div class="ai-status-dot ai-move-dot"></div>
+                        <span id="aimove-status">AI移动: 开启</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 游戏常量
+        const TileType = {
+            UNKNOWN: 0,
+            MOUNTAIN: 1,
+            STRONGHOLD: 2,
+            PLAIN: 3,
+            CAPITAL: 4,
+            SWAMP: 5
+        };
+        
+        const Direction = {
+            NORTH: 0,  // U
+            SOUTH: 1,  // D
+            WEST: 2,   // L
+            EAST: 3    // R
+        };
+        
+        const DIRECTION_DELTAS = {
+            [Direction.NORTH]: [0, -1],
+            [Direction.SOUTH]: [0, 1],
+            [Direction.WEST]: [-1, 0],
+            [Direction.EAST]: [1, 0]
+        };
+        
+        // 玩家颜色映射
+        const PLAYER_COLORS = {
+            0: "#95a5a6",  // 中立 - 灰色
+            1: "#3498db",  // 玩家1 - 蓝色
+            2: "#e74c3c",  // 玩家2 - 红色
+            3: "#2ecc71",  // 玩家3 - 绿色
+            4: "#f1c40f"   // 玩家4 - 黄色
+        };
+        
+        // 地形颜色
+        const TERRAIN_COLORS = {
+            [TileType.MOUNTAIN]: "#2c3e50",
+            [TileType.STRONGHOLD]: "#8e44ad",
+            [TileType.PLAIN]: "#27ae60",
+            [TileType.CAPITAL]: "#d35400",
+            [TileType.SWAMP]: "#16a085",
+            GATHERING: "#ff8c00" // AI集结点颜色
+        };
+        
+        // 地形符号
+        const TERRAIN_SYMBOLS = {
+            [TileType.MOUNTAIN]: "⛰️",
+            [TileType.STRONGHOLD]: "🏰",
+            [TileType.PLAIN]: "⬜",
+            [TileType.CAPITAL]: "👑",
+            [TileType.SWAMP]: "🌊"
+        };
+        
+        class Player {
+            constructor(id, teamId, capital) {
+                this.id = id;
+                this.teamId = teamId;
+                this.capital = capital;
+                this.isDefeated = false;
+                this.isOffline = false;
+                this.orderQueue = [];
+                // 添加位置记忆
+                this.lastPositions = new Map(); // 存储每个单位的上次位置 {tileKey: {x, y}}
+            }
+        }
+        
+        class Tile {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.type = TileType.PLAIN;
+                this.ownerId = 0;  // 0 for neutral
+                this.units = 0;
+                this.lighten = false;
+                // 添加冷却时间和上一步位置
+                this.lastMoved = -100; // 上一次移动的半回合计数
+                this.lastPosition = null; // 上一次的位置 {x, y}
+                // AI可视化状态
+                this.aiState = null; // 'gathering', 'target', 'ai-move'
+                // 明示状态
+                this.visible = false;
+            }
+            
+            isPassable() {
+                return this.type !== TileType.MOUNTAIN;
+            }
+            
+            // 检查是否在冷却中
+            isInCooldown(halfturnCount) {
+                return halfturnCount - this.lastMoved < 3;
+            }
+        }
+        
+        class GeneralsGame {
+            constructor(width = 10, height = 10) {
+                this.width = width;
+                this.height = height;
+                this.map = this.createMap(width, height);
+                this.players = {};
+                this.teams = {};
+                this.playerMovePriority = [];
+                this.currentPriorityIndex = 0;
+                this.halfturnCount = 0;
+                this.roundCount = 0;
+                this.gameState = {
+                    halfturnId: 0,
+                    defeatedPlayers: [],
+                    alivePlayers: [],
+                    leaderboard: [],
+                    messages: []
+                };
+                this.initNeutralTeam();
+                this.selectedTile = null;
+                this.autoMode = false;
+                this.gameOver = false;
+                this.winner = null;
+                this.aiStatus = "等待游戏开始";
+                this.aiCount = 1; // 默认AI数量
+                this.hideFog = true; // 默认隐藏非明示格子
+            }
+            
+            createMap(width, height) {
+                const map = [];
+                for (let y = 0; y < height; y++) {
+                    const row = [];
+                    for (let x = 0; x < width; x++) {
+                        row.push(new Tile(x, y));
+                    }
+                    map.push(row);
+                }
+                return map;
+            }
+            
+            initNeutralTeam() {
+                this.teams[0] = {
+                    id: 0,
+                    players: [],
+                    visionCache: new Set()
+                };
+            }
+            
+            addPlayer(playerId, teamId, capitalX, capitalY) {
+                if (this.players[playerId]) {
+                    throw new Error(`玩家 ${playerId} 已存在`);
+                }
+                
+                // 创建玩家
+                const player = new Player(playerId, teamId, { x: capitalX, y: capitalY });
+                this.players[playerId] = player;
+                
+                // 创建队伍（如果不存在）
+                if (!this.teams[teamId]) {
+                    this.teams[teamId] = {
+                        id: teamId,
+                        players: [],
+                        visionCache: new Set()
+                    };
+                }
+                this.teams[teamId].players.push(player);
+                
+                // 初始化玩家首都
+                const capitalTile = this.map[capitalY][capitalX];
+                capitalTile.type = TileType.CAPITAL;
+                capitalTile.ownerId = playerId;
+                capitalTile.units = 1;
+                capitalTile.lighten = true;
+                
+                // 更新优先级队列
+                this.playerMovePriority.push(playerId);
+                
+                return player;
+            }
+            
+            // 更新所有格子的可见性
+            updateVisibility() {
+                // 重置所有格子的可见性
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        this.map[y][x].visible = false;
+                    }
+                }
+                
+                // 设置玩家领地及其周围3x3区域的可见性
+                for (const playerId in this.players) {
+                    if (playerId === "1") { // 只处理人类玩家
+                        for (let y = 0; y < this.height; y++) {
+                            for (let x = 0; x < this.width; x++) {
+                                const tile = this.map[y][x];
+                                if (tile.ownerId == playerId) {
+                                    // 设置该格子和周围3x3区域为可见
+                                    for (let dy = -1; dy <= 1; dy++) {
+                                        for (let dx = -1; dx <= 1; dx++) {
+                                            const nx = x + dx;
+                                            const ny = y + dy;
+                                            if (nx >= 0 && nx < this.width && ny >= 0 && ny < this.height) {
+                                                this.map[ny][nx].visible = true;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            appendOrder(playerId, srcX, srcY, direction, moveHalf) {
+                if (!this.players[playerId]) return;
+                
+                const player = this.players[playerId];
+                if (player.isDefeated || player.isOffline) return;
+                
+                player.orderQueue.push({
+                    playerId,
+                    srcX,
+                    srcY,
+                    direction,
+                    moveHalf
+                });
+            }
+            
+            clearQueue(playerId) {
+                if (this.players[playerId]) {
+                    this.players[playerId].orderQueue = [];
+                }
+            }
+            
+            toggleAutoMode() {
+                this.autoMode = !this.autoMode;
+                return this.autoMode;
+            }
+            
+            toggleFogVisibility() {
+                this.hideFog = !this.hideFog;
+                return this.hideFog;
+            }
+            
+            tick() {
+                if (this.gameOver) return this.gameState;
+                
+                this.halfturnCount++;
+                this.gameState = {
+                    halfturnId: this.halfturnCount,
+                    defeatedPlayers: [],
+                    alivePlayers: [],
+                    leaderboard: [],
+                    messages: []
+                };
+                
+                // 清除所有AI可视化状态
+                this.clearAIStates();
+                
+                // 更新可见性
+                this.updateVisibility();
+                
+                // 为机器人玩家生成移动指令
+                this.generateRobotOrders();
+                
+                // 收集玩家操作
+                const orders = [];
+                for (const playerId in this.players) {
+                    const player = this.players[playerId];
+                    if (player.orderQueue.length > 0 && !player.isDefeated && !player.isOffline) {
+                        // 获取队列中的所有指令
+                        while (player.orderQueue.length > 0) {
+                            orders.push(player.orderQueue.shift());
+                        }
+                    }
+                }
+                
+                // 按优先级执行移动
+                const processedOrders = [];
+                for (let i = 0; i < orders.length; i++) {
+                    const playerId = this.getNextPlayerPriority();
+                    if (playerId === -1) break;
+                    
+                    const playerOrder = orders.find(o => o.playerId === playerId);
+                    if (playerOrder) {
+                        const index = orders.indexOf(playerOrder);
+                        orders.splice(index, 1);
+                        if (this.processMoveOrder(playerOrder)) {
+                            processedOrders.push(playerOrder);
+                        } else {
+                            this.clearQueue(playerId);
+                        }
+                    }
+                }
+                
+                // 单位生成与消失
+                this.generateUnits();
+                
+                // 更新存活玩家列表
+                this.gameState.alivePlayers = Object.keys(this.players)
+                    .filter(playerId => {
+                        const player = this.players[playerId];
+                        return !player.isDefeated && !player.isOffline;
+                    });
+                
+                // 增加轮次计数
+                if (this.halfturnCount % 50 === 0) {
+                    this.roundCount++;
+                }
+                
+                // 生成模拟消息
+                if (this.halfturnCount % 5 === 0) {
+                    this.gameState.messages.push(`半回合 ${this.halfturnCount} 完成`);
+                }
+                
+                // 生成模拟排行榜
+                this.updateLeaderboard();
+                
+                // 检查游戏是否结束
+                this.checkGameEnd();
+                
+                return this.gameState;
+            }
+            
+            // 清除所有AI可视化状态
+            clearAIStates() {
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        this.map[y][x].aiState = null;
+                    }
+                }
+            }
+            
+            // 优化后的机器人AI策略
+            generateRobotOrders() {
+                for (let aiId = 2; aiId <= 1 + this.aiCount; aiId++) {
+                    const robotPlayerId = aiId;
+                    const robot = this.players[robotPlayerId];
+                    
+                    if (!robot || robot.isDefeated || robot.isOffline) continue;
+                    
+                    // 策略1: 逃离沼泽（最高优先级）
+                    const swampTiles = this.findSwampTiles(robotPlayerId);
+                    if (swampTiles.length > 0) {
+                        // 尝试找到第一个有足够单位可以移动的沼泽地块
+                        for (const tile of swampTiles) {
+                            if (tile.units > 1) {
+                                this.executeSwampEscapeStrategy(tile, robotPlayerId);
+                                return;
+                            }
+                        }
+                    }
+                    
+                    // 策略2: 进攻玩家领地或中立要塞（第二优先级）
+                    const attackTarget = this.findAttackTarget(robotPlayerId);
+                    if (attackTarget) {
+                        // 使用改进的攻击策略（支持兵力集结）
+                        this.executeAdvancedAttackStrategy(attackTarget.srcTile, attackTarget.targetTile, robotPlayerId);
+                        return;
+                    }
+                    
+                    // 策略3: 向四周扩张中性土地
+                    const expansionTarget = this.findNeutralExpansion(robotPlayerId);
+                    if (expansionTarget) {
+                        const dir = this.getDirection(expansionTarget.srcTile, expansionTarget.destTile);
+                        if (dir !== null) {
+                            this.players[robotPlayerId].orderQueue.push({
+                                playerId: robotPlayerId,
+                                srcX: expansionTarget.srcTile.x,
+                                srcY: expansionTarget.srcTile.y,
+                                direction: dir,
+                                moveHalf: false
+                            });
+                            this.gameState.messages.push(`机器人玩家 ${robotPlayerId} 向中性土地(${expansionTarget.destTile.x},${expansionTarget.destTile.y})扩张`);
+                        }
+                        return;
+                    }
+                    
+                    // 策略4: 向玩家首都方向扩张
+                    const humanCapital = this.players[1]?.capital;
+                    if (humanCapital) {
+                        const expansionTarget = this.findExpansionTarget(robotPlayerId, humanCapital);
+                        if (expansionTarget) {
+                            this.executeExpansionStrategy(expansionTarget, humanCapital, robotPlayerId);
+                            return;
+                        }
+                    }
+                    
+                    // 策略5: 随机移动
+                    this.executeRandomStrategy(robotPlayerId);
+                }
+            }
+            
+            // 查找攻击目标
+            findAttackTarget(robotPlayerId) {
+                const humanPlayerId = 1;
+                let bestSource = null;
+                let bestTarget = null;
+                let bestScore = -Infinity;
+                
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const srcTile = this.map[y][x];
+                        if (srcTile.ownerId !== robotPlayerId || srcTile.units <= 1) continue;
+                        
+                        for (const dir of Object.values(Direction)) {
+                            const [dx, dy] = DIRECTION_DELTAS[dir];
+                            const destX = x + dx;
+                            const destY = y + dy;
+                            
+                            if (destX < 0 || destX >= this.width || destY < 0 || destY >= this.height) continue;
+                            
+                            const destTile = this.map[destY][destX];
+                            if (!destTile.isPassable()) continue;
+                            
+                            // 考虑玩家控制的格子或中立要塞
+                            if (destTile.ownerId === humanPlayerId || 
+                                (destTile.ownerId === 0 && destTile.type === TileType.STRONGHOLD)) {
+                                let score = 0;
+                                
+                                // 优先攻击要塞
+                                if (destTile.type === TileType.STRONGHOLD) score += 30;
+                                
+                                // 优先攻击首都
+                                if (destTile.type === TileType.CAPITAL) score += 50;
+                                
+                                // 优先攻击单位少的格子
+                                score += 20 - destTile.units;
+                                
+                                // 避免沼泽攻击
+                                if (srcTile.type === TileType.SWAMP) score -= 10;
+                                
+                                // 兵力优势
+                                if (srcTile.units > destTile.units) {
+                                    score += 20;
+                                }
+                                
+                                // 附近支援兵力
+                                const supportUnits = this.findNearbySupportUnits(srcTile, destTile, robotPlayerId);
+                                if (supportUnits > destTile.units) {
+                                    score += 15;
+                                }
+                                
+                                // 如果是中立要塞，额外加分
+                                if (destTile.ownerId === 0 && destTile.type === TileType.STRONGHOLD) {
+                                    score += 20;
+                                }
+                                
+                                if (score > bestScore) {
+                                    bestScore = score;
+                                    bestSource = srcTile;
+                                    bestTarget = destTile;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                return bestSource ? { srcTile: bestSource, targetTile: bestTarget } : null;
+            }
+            
+            // 执行高级攻击策略（支持兵力集结）
+            executeAdvancedAttackStrategy(srcTile, targetTile, robotPlayerId) {
+                // 计算攻击所需兵力（目标兵力+1）
+                const requiredUnits = targetTile.units + 1;
+                this.aiStatus = `玩家${robotPlayerId}发现目标: (${targetTile.x},${targetTile.y}) 需要兵力: ${requiredUnits}`;
+                
+                // 如果当前兵力足够，直接攻击
+                if (srcTile.units > requiredUnits) {
+                    this.aiStatus = `玩家${robotPlayerId}兵力充足，直接攻击目标 (${targetTile.x},${targetTile.y})`;
+                    this.executeAttackStrategy(srcTile, targetTile, robotPlayerId);
+                    return;
+                }
+                
+                this.aiStatus = `玩家${robotPlayerId}兵力不足，开始集结 (${srcTile.units}/${requiredUnits})`;
+                
+                // 兵力不足，尝试集结兵力
+                const gatherResult = this.gatherForces(srcTile, targetTile, robotPlayerId, requiredUnits);
+                
+                if (gatherResult.success) {
+                    // 成功集结，添加攻击指令
+                    const path = this.bfsPath(srcTile.x, srcTile.y, targetTile.x, targetTile.y, robotPlayerId);
+                    
+                    if (path && path.length > 1) {
+                        const nextStep = path[1];
+                        const dir = this.getDirection({x: path[0].x, y: path[0].y}, nextStep);
+                        
+                        if (dir !== null) {
+                            this.players[robotPlayerId].orderQueue.push({
+                                playerId: robotPlayerId,
+                                srcX: srcTile.x,
+                                srcY: srcTile.y,
+                                direction: dir,
+                                moveHalf: false
+                            });
+                            
+                            // 设置AI可视化状态
+                            srcTile.aiState = 'ai-move';
+                            targetTile.aiState = 'target';
+                            
+                            this.gameState.messages.push(
+                                `机器人玩家${robotPlayerId}集结成功！从(${srcTile.x},${srcTile.y})向目标(${targetTile.x},${targetTile.y})移动`
+                            );
+                        }
+                    }
+                } else {
+                    // 无法集结足够兵力，执行原攻击策略
+                    this.aiStatus = `玩家${robotPlayerId}无法集结足够兵力 (${gatherResult.totalUnits}/${requiredUnits})，尝试攻击`;
+                    this.executeAttackStrategy(srcTile, targetTile, robotPlayerId);
+                }
+            }
+            
+            // 优化兵力集结方法 - 优先从己方兵力最多的格子调兵（兵力相同则选择最近的）
+            gatherForces(gatheringPoint, targetTile, playerId, requiredUnits) {
+                let totalGathered = gatheringPoint.units;
+                const gatheringQueue = [];
+                
+                // 1. 寻找附近的友军单位（5格范围内）
+                const nearbyAllies = this.findNearbyAllies(gatheringPoint, playerId, 5);
+                
+                // 2. 排序规则：优先兵力最多的格子，兵力相同则选择距离最近的
+                nearbyAllies.sort((a, b) => {
+                    // 主要按兵力从大到小排序
+                    if (b.units !== a.units) {
+                        return b.units - a.units;
+                    }
+                    // 次要按距离从小到大排序
+                    const distA = Math.abs(a.x - gatheringPoint.x) + Math.abs(a.y - gatheringPoint.y);
+                    const distB = Math.abs(b.x - gatheringPoint.x) + Math.abs(b.y - gatheringPoint.y);
+                    return distA - distB;
+                });
+                
+                // 3. 指挥友军向集结点移动
+                for (const ally of nearbyAllies) {
+                    if (totalGathered >= requiredUnits) break;
+                    if (ally.units <= 1) continue; // 无法移动的单位
+                    if (ally === gatheringPoint) continue; // 跳过集结点本身
+                    
+                    // 检查冷却时间
+                    if (ally.isInCooldown(this.halfturnCount)) continue;
+                    
+                    // 计算移动方向（使用优化路径算法）
+                    const path = this.optimizedBfsPath(ally.x, ally.y, gatheringPoint.x, gatheringPoint.y, playerId);
+                    
+                    if (path && path.length > 1) {
+                        // 只移动第一步
+                        const nextStep = path[1];
+                        const dir = this.getDirection({x: ally.x, y: ally.y}, nextStep);
+                        
+                        if (dir !== null) {
+                            // 检查移动是否有效
+                            if (this.isMoveValid(ally.x, ally.y, dir, playerId)) {
+                                gatheringQueue.push({
+                                    playerId: playerId,
+                                    srcX: ally.x,
+                                    srcY: ally.y,
+                                    direction: dir,
+                                    moveHalf: false
+                                });
+                                
+                                // 设置AI可视化状态
+                                ally.aiState = 'gathering';
+                                gatheringPoint.aiState = 'gathering';
+                                targetTile.aiState = 'target';
+                                
+                                // 计算可移动的兵力（最多移动全部-1）
+                                const moveUnits = ally.units - 1;
+                                
+                                // 更新统计数据
+                                totalGathered += moveUnits;
+                                
+                                this.gameState.messages.push(
+                                    `机器人玩家${playerId}集结兵力: 从(${ally.x},${ally.y})移动${moveUnits}单位到集结点(${gatheringPoint.x},${gatheringPoint.y})`
+                                );
+                            }
+                        }
+                    }
+                }
+                
+                // 将集结指令添加到机器人队列（按兵力从大到小）
+                gatheringQueue.forEach(order => {
+                    this.players[playerId].orderQueue.push(order);
+                });
+                
+                return {
+                    success: totalGathered >= requiredUnits,
+                    totalUnits: totalGathered
+                };
+            }
+            
+            // 新增：移动有效性检查
+            isMoveValid(srcX, srcY, direction, playerId) {
+                const [dx, dy] = DIRECTION_DELTAS[direction];
+                const destX = srcX + dx;
+                const destY = srcY + dy;
+                
+                // 边界检查
+                if (destX < 0 || destX >= this.width || destY < 0 || destY >= this.height) {
+                    return false;
+                }
+                
+                const srcTile = this.map[srcY][srcX];
+                const destTile = this.map[destY][destX];
+                
+                // 源格子验证
+                if (srcTile.ownerId !== playerId || srcTile.units <= 1) {
+                    return false;
+                }
+                
+                // 目标是否可通过
+                if (!destTile.isPassable()) {
+                    return false;
+                }
+                
+                // 冷却时间检查
+                if (srcTile.isInCooldown(this.halfturnCount)) {
+                    return false;
+                }
+                
+                return true;
+            }
+            
+            // 新增：优化路径算法（避免沼泽）
+            optimizedBfsPath(startX, startY, targetX, targetY, playerId, maxDepth = 20) {
+                const queue = [{ x: startX, y: startY, path: [], cost: 0 }];
+                const visited = new Set([`${startX},${startY}`]);
+                
+                while (queue.length > 0) {
+                    const { x, y, path, cost } = queue.shift();
+                    
+                    // 达到目标
+                    if (x === targetX && y === targetY) {
+                        return [...path, { x, y }];
+                    }
+                    
+                    // 超过最大深度
+                    if (path.length >= maxDepth) continue;
+                    
+                    // 检查四个方向
+                    const directions = Object.values(Direction);
+                    for (const dir of directions) {
+                        const [dx, dy] = DIRECTION_DELTAS[dir];
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        
+                        // 边界检查
+                        if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                        
+                        const tile = this.map[ny][nx];
+                        // 跳过山地和敌方要塞
+                        if (!tile.isPassable() || 
+                            (tile.type === TileType.STRONGHOLD && tile.ownerId !== playerId)) {
+                            continue;
+                        }
+                        
+                        const key = `${nx},${ny}`;
+                        if (!visited.has(key)) {
+                            visited.add(key);
+                            
+                            // 计算移动成本（沼泽成本更高）
+                            let moveCost = 1;
+                            if (tile.type === TileType.SWAMP) {
+                                moveCost = 3; // 沼泽地形惩罚
+                            }
+                            
+                            queue.push({
+                                x: nx,
+                                y: ny,
+                                path: [...path, { x, y }],
+                                cost: cost + moveCost
+                            });
+                        }
+                    }
+                    
+                    // 按成本排序队列
+                    queue.sort((a, b) => a.cost - b.cost);
+                }
+                
+                return null; // 没有找到路径
+            }
+            
+            // 寻找附近的友军单位
+            findNearbyAllies(centerTile, playerId, radius) {
+                const allies = [];
+                const minX = Math.max(0, centerTile.x - radius);
+                const maxX = Math.min(this.width - 1, centerTile.x + radius);
+                const minY = Math.max(0, centerTile.y - radius);
+                const maxY = Math.min(this.height - 1, centerTile.y + radius);
+                
+                for (let y = minY; y <= maxY; y++) {
+                    for (let x = minX; x <= maxX; x++) {
+                        const tile = this.map[y][x];
+                        if (tile.ownerId === playerId && tile.units > 0) {
+                            allies.push(tile);
+                        }
+                    }
+                }
+                
+                return allies;
+            }
+            
+            // 执行攻击策略
+            executeAttackStrategy(srcTile, targetTile, robotPlayerId) {
+                // 使用BFS计算最优路径
+                const path = this.bfsPath(srcTile.x, srcTile.y, targetTile.x, targetTile.y, robotPlayerId);
+                
+                if (path && path.length > 1) {
+                    // 规划未来3回合的移动
+                    const steps = Math.min(3, path.length - 1);
+                    
+                    for (let i = 0; i < steps; i++) {
+                        const nextStep = path[i + 1];
+                        const dir = this.getDirection({x: path[i].x, y: path[i].y}, nextStep);
+                        
+                        if (dir !== null) {
+                            // 添加指令到机器人队列
+                            this.players[robotPlayerId].orderQueue.push({
+                                playerId: robotPlayerId,
+                                srcX: path[i].x,
+                                srcY: path[i].y,
+                                direction: dir,
+                                moveHalf: false
+                            });
+                            
+                            // 设置AI可视化状态
+                            srcTile.aiState = 'ai-move';
+                            targetTile.aiState = 'target';
+                            
+                            this.gameState.messages.push(`机器人玩家 ${robotPlayerId} 向目标(${targetTile.x},${targetTile.y})移动: 步骤 ${i+1}/${steps}`);
+                        }
+                    }
+                } else {
+                    // 直接向目标移动
+                    const dir = this.getDirection(srcTile, targetTile);
+                    if (dir !== null) {
+                        this.players[robotPlayerId].orderQueue.push({
+                            playerId: robotPlayerId,
+                            srcX: srcTile.x,
+                            srcY: srcTile.y,
+                            direction: dir,
+                            moveHalf: false
+                        });
+                        
+                        // 设置AI可视化状态
+                        srcTile.aiState = 'ai-move';
+                        targetTile.aiState = 'target';
+                        
+                        this.gameState.messages.push(`机器人玩家 ${robotPlayerId} 直接向目标(${targetTile.x},${targetTile.y})移动`);
+                    }
+                }
+            }
+            
+            // 查找扩张目标
+            findExpansionTarget(robotPlayerId, humanCapital) {
+                let bestTile = null;
+                let minDistance = Infinity;
+                
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const tile = this.map[y][x];
+                        if (tile.ownerId !== robotPlayerId || tile.units <= 1) continue;
+                        if (tile.type === TileType.SWAMP) continue; // 跳过沼泽单位
+                        
+                        const distance = Math.abs(x - humanCapital.x) + Math.abs(y - humanCapital.y);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            bestTile = tile;
+                        }
+                    }
+                }
+                
+                return bestTile;
+            }
+            
+            // 执行扩张策略
+            executeExpansionStrategy(srcTile, humanCapital, robotPlayerId) {
+                // 使用BFS计算最优路径
+                const path = this.bfsPath(srcTile.x, srcTile.y, humanCapital.x, humanCapital.y, robotPlayerId);
+                
+                if (path && path.length > 1) {
+                    // 只移动第一步（保留后续步骤供下回合决策）
+                    const nextStep = path[1];
+                    const dir = this.getDirection({x: path[0].x, y: path[0].y}, nextStep);
+                    
+                    if (dir !== null) {
+                        this.players[robotPlayerId].orderQueue.push({
+                            playerId: robotPlayerId,
+                            srcX: srcTile.x,
+                            srcY: srcTile.y,
+                            direction: dir,
+                            moveHalf: false
+                        });
+                        
+                        // 记录当前位置供下回合使用
+                        const robot = this.players[robotPlayerId];
+                        robot.lastPositions.set(`${srcTile.x},${srcTile.y}`, {
+                            x: nextStep.x,
+                            y: nextStep.y,
+                            path: path.slice(1),
+                            type: 'expansion'
+                        });
+                        
+                        // 设置AI可视化状态
+                        srcTile.aiState = 'ai-move';
+                        
+                        this.gameState.messages.push(`机器人玩家 ${robotPlayerId} 向首都(${humanCapital.x},${humanCapital.y})移动`);
+                    }
+                } else {
+                    // 直接向首都方向移动
+                    const dir = this.getDirection(srcTile, humanCapital);
+                    if (dir !== null) {
+                        this.players[robotPlayerId].orderQueue.push({
+                            playerId: robotPlayerId,
+                            srcX: srcTile.x,
+                            srcY: srcTile.y,
+                            direction: dir,
+                            moveHalf: false
+                        });
+                        
+                        // 设置AI可视化状态
+                        srcTile.aiState = 'ai-move';
+                        
+                        this.gameState.messages.push(`机器人玩家 ${robotPlayerId} 直接向首都(${humanCapital.x},${humanCapital.y})移动`);
+                    }
+                }
+            }
+            
+            // 查找沼泽上的兵力
+            findSwampTiles(robotPlayerId) {
+                const tiles = [];
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const tile = this.map[y][x];
+                        if (tile.ownerId === robotPlayerId && 
+                            tile.type === TileType.SWAMP && 
+                            tile.units > 0) {  // 修改为>0，包括单位数为1的地块
+                            tiles.push(tile);
+                        }
+                    }
+                }
+                return tiles;
+            }
+            
+            // 执行沼泽逃脱策略（优化版）- 避免原路、优先平原、优先非己方
+            executeSwampEscapeStrategy(tile, robotPlayerId) {
+                // 如果单位不足2个，无法移动
+                if (tile.units <= 1) return;
+                
+                const directions = Object.values(Direction);
+                const validDirections = [];
+                
+                for (const dir of directions) {
+                    const [dx, dy] = DIRECTION_DELTAS[dir];
+                    const destX = tile.x + dx;
+                    const destY = tile.y + dy;
+                    
+                    if (destX < 0 || destX >= this.width || destY < 0 || destY >= this.height) continue;
+                    
+                    const destTile = this.map[destY][destX];
+                    if (!destTile.isPassable()) continue;
+                    
+                    validDirections.push(dir);
+                }
+                
+                if (validDirections.length > 0) {
+                    // 选择最佳方向（优先平原，避免新沼泽，优先非己方，避免原路返回）
+                    let bestDir = validDirections[0];
+                    let bestScore = -Infinity;
+                    
+                    for (const dir of validDirections) {
+                        const [dx, dy] = DIRECTION_DELTAS[dir];
+                        const destX = tile.x + dx;
+                        const destY = tile.y + dy;
+                        const destTile = this.map[destY][destX];
+                        
+                        let score = 0;
+                        // 地形类型评分
+                        if (destTile.type === TileType.PLAIN) score += 20;
+                        if (destTile.type === TileType.STRONGHOLD) score += 10;
+                        if (destTile.type === TileType.SWAMP) score -= 30; // 避免新沼泽
+                        
+                        // 领地所有权评分
+                        if (destTile.ownerId === robotPlayerId) {
+                            score += 5; // 己方领地
+                        } else if (destTile.ownerId === 0) {
+                            score += 15; // 中立领地（优先占领）
+                        } else {
+                            score += 10; // 敌方领地（可以攻击）
+                        }
+                        
+                        // 避免原路返回
+                        if (tile.lastPosition) {
+                            if (destX === tile.lastPosition.x && destY === tile.lastPosition.y) {
+                                score -= 50; // 大幅降低返回原路的评分
+                            }
+                        }
+                        
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestDir = dir;
+                        }
+                    }
+                    
+                    // 添加指令到机器人队列
+                    this.players[robotPlayerId].orderQueue.push({
+                        playerId: robotPlayerId,
+                        srcX: tile.x,
+                        srcY: tile.y,
+                        direction: bestDir,
+                        moveHalf: false
+                    });
+                    
+                    // 设置AI可视化状态
+                    tile.aiState = 'ai-move';
+                    
+                    this.gameState.messages.push(`机器人玩家 ${robotPlayerId} 逃离沼泽(${tile.x},${tile.y})，方向: ${this.getDirectionName(bestDir)}`);
+                }
+            }
+            
+            // 查找中性土地扩张目标
+            findNeutralExpansion(robotPlayerId) {
+                const expansionTargets = [];
+                
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const tile = this.map[y][x];
+                        if (tile.ownerId !== robotPlayerId || tile.units <= 1) continue;
+                        
+                        // 检查四个方向是否有中性土地
+                        const directions = Object.values(Direction);
+                        for (const dir of directions) {
+                            const [dx, dy] = DIRECTION_DELTAS[dir];
+                            const destX = x + dx;
+                            const destY = y + dy;
+                            
+                            if (destX < 0 || destX >= this.width || destY < 0 || destY >= this.height) continue;
+                            
+                            const destTile = this.map[destY][destX];
+                            // 如果目标地块是中性且可通过
+                            if (destTile.ownerId === 0 && destTile.isPassable()) {
+                                expansionTargets.push({
+                                    srcTile: tile,
+                                    destTile: destTile,
+                                    score: destTile.units + (destTile.type === TileType.PLAIN ? 10 : 0)
+                                });
+                            }
+                        }
+                    }
+                }
+                
+                // 选择最佳扩张目标（优先单位少的地块）
+                if (expansionTargets.length > 0) {
+                    expansionTargets.sort((a, b) => a.score - b.score);
+                    return expansionTargets[0];
+                }
+                
+                return null;
+            }
+            
+            // 执行随机移动策略（增加扩张权重）
+            executeRandomStrategy(robotPlayerId) {
+                const movableTiles = [];
+                for (let y = 0; y < this.height; y++) {
+                    for (let x = 0; x < this.width; x++) {
+                        const tile = this.map[y][x];
+                        if (tile.ownerId === robotPlayerId && 
+                            tile.units > 1) {
+                            movableTiles.push(tile);
+                        }
+                    }
+                }
+                
+                if (movableTiles.length > 0) {
+                    const tile = movableTiles[Math.floor(Math.random() * movableTiles.length)];
+                    const directions = Object.values(Direction);
+                    const validDirections = [];
+                    const directionScores = [];
+                    
+                    for (const dir of directions) {
+                        const [dx, dy] = DIRECTION_DELTAS[dir];
+                        const destX = tile.x + dx;
+                        const destY = tile.y + dy;
+                        
+                        if (destX < 0 || destX >= this.width || destY < 0 || destY >= this.height) continue;
+                        
+                        const destTile = this.map[destY][destX];
+                        if (!destTile.isPassable()) continue;
+                        if (destTile.type === TileType.SWAMP) continue;
+                        
+                        validDirections.push(dir);
+                        
+                        // 给扩张方向更高权重
+                        let score = 1;
+                        if (destTile.ownerId === 0) score += 3; // 中性土地
+                        if (destTile.type === TileType.PLAIN) score += 2; // 平原
+                        directionScores.push(score);
+                    }
+                    
+                    if (validDirections.length > 0) {
+                        // 根据分数选择方向
+                        const totalScore = directionScores.reduce((a, b) => a + b, 0);
+                        let randomScore = Math.random() * totalScore;
+                        
+                        let selectedDir = validDirections[0];
+                        for (let i = 0; i < validDirections.length; i++) {
+                            randomScore -= directionScores[i];
+                            if (randomScore <= 0) {
+                                selectedDir = validDirections[i];
+                                break;
+                            }
+                        }
+                        
+                        this.players[robotPlayerId].orderQueue.push({
+                            playerId: robotPlayerId,
+                            srcX: tile.x,
+                            srcY: tile.y,
+                            direction: selectedDir,
+                            moveHalf: Math.random() > 0.5
+                        });
+                        
+                        // 设置AI可视化状态
+                        tile.aiState = 'ai-move';
+                    }
+                }
+            }
+            
+            // BFS路径查找
+            bfsPath(startX, startY, targetX, targetY, playerId, maxDepth = 20) {
+                const queue = [{ x: startX, y: startY, path: [] }];
+                const visited = new Set([`${startX},${startY}`]);
+                
+                while (queue.length > 0) {
+                    const { x, y, path } = queue.shift();
+                    
+                    // 达到目标
+                    if (x === targetX && y === targetY) {
+                        return [...path, { x, y }];
+                    }
+                    
+                    // 超过最大深度
+                    if (path.length >= maxDepth) continue;
+                    
+                    // 检查四个方向
+                    const directions = Object.values(Direction);
+                    for (const dir of directions) {
+                        const [dx, dy] = DIRECTION_DELTAS[dir];
+                        const nx = x + dx;
+                        const ny = y + dy;
+                        
+                        // 边界检查
+                        if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) continue;
+                        
+                        const tile = this.map[ny][nx];
+                        // 跳过山地和敌方要塞
+                        if (!tile.isPassable() || 
+                            (tile.type === TileType.STRONGHOLD && tile.ownerId !== playerId)) {
+                            continue;
+                        }
+                        
+                        const key = `${nx},${ny}`;
+                        if (!visited.has(key)) {
+                            visited.add(key);
+                            queue.push({
+                                x: nx,
+                                y: ny,
+                                path: [...path, { x, y }]
+                            });
+                        }
+                    }
+                }
+                
+                return null; // 没有找到路径
+            }
+            
+            // 获取方向
+            getDirection(srcTile, destTile) {
+                const dx = destTile.x - srcTile.x;
+                const dy = destTile.y - srcTile.y;
+                
+                if (dx === 1 && dy === 0) return Direction.EAST;
+                if (dx === -1 && dy === 0) return Direction.WEST;
+                if (dx === 0 && dy === 1) return Direction.SOUTH;
+                if (dx === 0 && dy === -1) return Direction.NORTH;
+                
+                return null;
+            }
+            
+            // 查找附近的支援单位
+            findNearbySupportUnits(srcTile, targetTile, playerId) {
+                let totalSupport = 0;
+                const directions = Object.values(Direction);
+                
+                // 检查源格子周围的友军单位
+                for (const dir of directions) {
+                    const [dx, dy] = DIRECTION_DELTAS[dir];
+                    const checkX = srcTile.x + dx;
+                    const checkY = srcTile.y + dy;
+                    
+                    if (checkX < 0 || checkX >= this.width || checkY < 0 || checkY >= this.height) continue;
+                    
+                    const tile = this.map[checkY][checkX];
+                    
+                    // 如果是友军单位且可以移动
+                    if (tile.ownerId === playerId && tile.units > 1) {
+                        // 检查是否可以移动到目标位置
+                        if (this.canMoveToTarget(tile, targetTile)) {
+                            totalSupport += tile.units - 1;
+                        }
+                    }
+                }
+                
+                return totalSupport;
+            }
+            
+            // 检查是否可以移动到目标位置
+            canMoveToTarget(srcTile, targetTile) {
+                const dx = targetTile.x - srcTile.x;
+                const dy = targetTile.y - srcTile.y;
+                
+                // 如果目标在相邻位置
+                if ((Math.abs(dx) === 1 && dy === 0) || (Math.abs(dy) === 1 && dx === 0)) {
+                    return true;
+                }
+                
+                return false;
+            }
+            
+            getDirectionName(direction) {
+                switch (direction) {
+                    case Direction.NORTH: return "北";
+                    case Direction.SOUTH: return "南";
+                    case Direction.WEST: return "西";
+                    case Direction.EAST: return "东";
+                    default: return "未知";
+                }
+            }
+            
+            getNextPlayerPriority() {
+                if (this.playerMovePriority.length === 0) return -1;
+                
+                const playerId = this.playerMovePriority[this.currentPriorityIndex];
+                this.currentPriorityIndex = (this.currentPriorityIndex + 1) % this.playerMovePriority.length;
+                return playerId;
+            }
+            
+            processMoveOrder(order) {
+                const { playerId, srcX, srcY, direction, moveHalf } = order;
+                const srcTile = this.map[srcY][srcX];
+                
+                // 验证源格子
+                if (srcTile.ownerId !== playerId) return false;
+                if (srcTile.units <= 1) return false;
+                
+                // 计算目标位置
+                const [dx, dy] = DIRECTION_DELTAS[direction];
+                const destX = srcX + dx;
+                const destY = srcY + dy;
+                
+                // 检查边界
+                if (destX < 0 || destX >= this.width || destY < 0 || destY >= this.height) {
+                    return false;
+                }
+                
+                const destTile = this.map[destY][destX];
+                
+                // 检查目标是否可通过
+                if (!destTile.isPassable()) return false;
+                
+                // 计算移动单位数量
+                const moveUnits = moveHalf ? Math.floor(srcTile.units / 2) : srcTile.units - 1;
+                srcTile.units -= moveUnits;
+                
+                // 设置移动冷却时间
+                srcTile.lastMoved = this.halfturnCount;
+                
+                // 记录上一步位置
+                if (destTile.ownerId !== playerId) {
+                    destTile.lastPosition = {x: srcX, y: srcY};
+                }
+                
+                // 处理不同类型的目标格子
+                if (destTile.ownerId === 0) {  // 中立格子
+                    // 如果是中立要塞，则进行战斗
+                    if (destTile.type === TileType.STRONGHOLD) {
+                        if (moveUnits > destTile.units) {
+                            destTile.ownerId = playerId;
+                            destTile.units = moveUnits - destTile.units;
+                        } else {
+                            destTile.units = destTile.units - moveUnits;
+                        }
+                    } else if (moveUnits > 1) {
+                        destTile.ownerId = playerId;
+                        destTile.units = moveUnits - 1;
+                    }
+                } else if (destTile.ownerId === playerId) {  // 自己的格子
+                    destTile.units += moveUnits;
+                } else {  // 敌方格子
+                    const enemyPlayerId = destTile.ownerId;
+                    const enemyUnits = destTile.units;
+                    
+                    if (moveUnits > enemyUnits) {
+                        destTile.ownerId = playerId;
+                        destTile.units = moveUnits - enemyUnits;
+                        
+                        // 检查是否占领首都
+                        if (destTile.type === TileType.CAPITAL) {
+                            this.handleCapitalCapture(playerId, enemyPlayerId, destTile);
+                        }
+                    } else {
+                        destTile.units = enemyUnits - moveUnits;
+                    }
+                }
+                
+                return true;
+            }
+            
+            handleCapitalCapture(attackerId, defenderId, capitalTile) {
+                const defender = this.players[defenderId];
+                if (!defender) return;
+                
+                defender.isDefeated = true;
+                this.gameState.defeatedPlayers.push(defenderId);
+                this.gameState.messages.push(`玩家 ${attackerId} 占领了玩家 ${defenderId} 的首都！`);
+                
+                // 普通规则：首都变为要塞
+                capitalTile.type = TileType.STRONGHOLD;
+                
+                // 转移所有格子
+                for (const row of this.map) {
+                    for (const tile of row) {
+                        if (tile.ownerId === defenderId) {
+                            tile.ownerId = attackerId;
+                            tile.units = Math.floor(tile.units / 2) + 1;
+                        }
+                    }
+                }
+            }
+            
+            generateUnits() {
+                for (const row of this.map) {
+                    for (const tile of row) {
+                        if (tile.ownerId === 0) continue;
+                        
+                        // 首都和要塞每回合生成单位
+                        if (tile.type === TileType.CAPITAL || tile.type === TileType.STRONGHOLD) {
+                            tile.units += 1;
+                        }
+                        
+                        // 沼泽每回合消失单位
+                        if (tile.type === TileType.SWAMP && tile.units > 0) {
+                            tile.units -= 1;
+                        }
+                        
+                        // 每25回合产生单位（原为50回合）
+                        if (this.halfturnCount % 25 === 0 && tile.ownerId !== 0) {
+                            tile.units += 1;
+                        }
+                    }
+                }
+            }
+            
+            updateLeaderboard() {
+                const teamStats = [];
+                
+                for (const teamId in this.teams) {
+                    if (teamId === "0") continue;
+                    
+                    const team = this.teams[teamId];
+                    let totalUnits = 0;
+                    let totalTiles = 0;
+                    const playerStats = [];
+                    
+                    for (const player of team.players) {
+                        let playerUnits = 0;
+                        let playerTiles = 0;
+                        
+                        for (const row of this.map) {
+                            for (const tile of row) {
+                                if (tile.ownerId === player.id) {
+                                    playerUnits += tile.units;
+                                    playerTiles++;
+                                }
+                            }
+                        }
+                        
+                        totalUnits += playerUnits;
+                        totalTiles += playerTiles;
+                        
+                        playerStats.push({
+                            playerId: player.id,
+                            defeated: player.isDefeated,
+                            units: playerUnits,
+                            tiles: playerTiles
+                        });
+                    }
+                    
+                    playerStats.sort((a, b) => b.units - a.units);
+                    
+                    teamStats.push({
+                        teamId,
+                        totalUnits,
+                        totalTiles,
+                        players: playerStats
+                    });
+                }
+                
+                teamStats.sort((a, b) => b.totalUnits - a.totalUnits);
+                this.gameState.leaderboard = teamStats;
+            }
+            
+            selectTile(x, y) {
+                this.selectedTile = { x, y };
+                return this.map[y][x];
+            }
+            
+            toggleAutoMode() {
+                this.autoMode = !this.autoMode;
+                return this.autoMode;
+            }
+            
+            // 检查游戏是否结束
+            checkGameEnd() {
+                // 检查玩家1（人类）是否失败
+                const humanPlayer = this.players[1];
+                if (humanPlayer && humanPlayer.isDefeated) {
+                    this.gameOver = true;
+                    this.winner = 2; // 机器人获胜
+                    return;
+                }
+                
+                // 检查其他玩家是否失败
+                let humanWins = true;
+                for (const playerId in this.players) {
+                    if (playerId !== "1") {
+                        const player = this.players[playerId];
+                        if (!player.isDefeated) {
+                            humanWins = false;
+                        }
+                    }
+                }
+                
+                if (humanWins) {
+                    this.gameOver = true;
+                    this.winner = 1; // 人类获胜
+                }
+            }
+            
+            // 重置游戏
+            resetGame(width, height) {
+                this.width = width;
+                this.height = height;
+                this.map = this.createMap(width, height);
+                this.players = {};
+                this.teams = {};
+                this.playerMovePriority = [];
+                this.currentPriorityIndex = 0;
+                this.halfturnCount = 0;
+                this.roundCount = 0;
+                this.gameState = {
+                    halfturnId: 0,
+                    defeatedPlayers: [],
+                    alivePlayers: [],
+                    leaderboard: [],
+                    messages: []
+                };
+                this.initNeutralTeam();
+                this.selectedTile = null;
+                this.autoMode = false;
+                this.gameOver = false;
+                this.winner = null;
+                this.aiStatus = "游戏已重置";
+            }
+        }
+        
+        class GameUI {
+            constructor() {
+                // 等待DOM完全加载后再初始化
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => this.initialize());
+                } else {
+                    this.initialize();
+                }
+            }
+            
+            initialize() {
+                this.game = new GeneralsGame(10, 10);
+                this.initDOMReferences();
+                this.setupEventListeners();
+                this.renderMap();
+                this.updateUI();
+                
+                // 初始化AI可视化状态
+                this.showGathering = true;
+                this.showTarget = true;
+                this.showAiMove = true;
+            }
+            
+            initGame(width = 10, height = 10) {
+                // 重置游戏
+                this.game.resetGame(width, height);
+                
+                // 添加玩家 - 人类玩家
+                this.game.addPlayer(1, 1, 1, 1);
+                
+                // 获取AI数量
+                const aiCount = parseInt(document.querySelector('.ai-count-option.selected').dataset.count);
+                this.game.aiCount = aiCount;
+                
+                // 添加AI玩家 - 修复位置重叠问题
+                const aiPositions = [];
+                
+                // 根据AI数量设置位置，确保不重叠
+                if (aiCount >= 1) {
+                    // 第一个AI在右下角
+                    aiPositions.push({x: width-2, y: height-2});
+                }
+                if (aiCount >= 2) {
+                    // 第二个AI在左下角（避免与玩家1重叠）
+                    aiPositions.push({x: 1, y: height-2});
+                }
+                if (aiCount >= 3) {
+                    // 第三个AI在右上角
+                    aiPositions.push({x: width-2, y: 1});
+                }
+                
+                // 添加AI玩家
+                for (let i = 0; i < aiCount; i++) {
+                    const pos = aiPositions[i];
+                    this.game.addPlayer(2 + i, 2 + i, pos.x, pos.y);
+                }
+                
+                // 设置地形 - 调整地形生成概率
+                for (let y = 0; y < height; y++) {
+                    for (let x = 0; x < width; x++) {
+                        const tile = this.game.map[y][x];
+                        
+                        // 跳过玩家首都
+                        if (tile.ownerId !== 0) continue;
+                        
+                        // 地形概率：空地50%，山地25%，沼泽12.5%，要塞12.5%
+                        const terrainTypes = [
+                            TileType.PLAIN, TileType.PLAIN, TileType.PLAIN, TileType.PLAIN,
+                            TileType.MOUNTAIN, TileType.MOUNTAIN,
+                            TileType.SWAMP,
+                            TileType.STRONGHOLD
+                        ];
+                        
+                        tile.type = terrainTypes[Math.floor(Math.random() * terrainTypes.length)];
+                        
+                        // 只有要塞可以有初始单位，设置为10-40之间的随机数
+                        if (tile.type === TileType.STRONGHOLD) {
+                            tile.units = Math.floor(Math.random() * 31) + 10; // 10-40
+                        }
+                    }
+                }
+                
+                // 强制重新创建所有格子元素
+                this.tileElements = null;
+                this.gameMap.style.setProperty('--map-size', width);
+                
+                // 更新可见性 - 确保玩家首都初始可见
+                this.game.updateVisibility();
+                
+                // 添加初始消息
+                this.addMessage(`游戏开始！地图大小: ${width}x${height}，AI数量: ${aiCount}`);
+                this.addMessage("点击你的单位，然后选择移动方向");
+            }
+            
+            initDOMReferences() {
+                this.gameMap = document.getElementById('game-map');
+                this.halfturnEl = document.getElementById('halfturn');
+                this.roundEl = document.getElementById('round');
+                this.currentPlayerEl = document.getElementById('current-player');
+                this.messagesEl = document.getElementById('messages');
+                this.leaderboardEl = document.getElementById('leaderboard');
+                this.playerSelect = document.getElementById('player-select');
+                this.halfMove = document.getElementById('half-move');
+                this.tickBtn = document.getElementById('tick-btn');
+                this.clearBtn = document.getElementById('clear-btn');
+                this.autoBtn = document.getElementById('auto-btn');
+                this.stateDot = document.getElementById('state-dot');
+                this.stateText = document.getElementById('state-text');
+                this.aiInfoEl = document.getElementById('ai-info');
+                this.aiStatusEl = document.getElementById('ai-status');
+                this.gatheringStatusEl = document.getElementById('gathering-status');
+                this.targetStatusEl = document.getElementById('target-status');
+                this.aimoveStatusEl = document.getElementById('aimove-status');
+                this.hideFogBtn = document.getElementById('hide-fog-btn');
+                
+                // 开始界面元素
+                this.startScreen = document.getElementById('start-screen');
+                this.sizeOptions = document.querySelectorAll('.size-option');
+                this.startButton = document.getElementById('start-button');
+                this.aiCountOptions = document.querySelectorAll('.ai-count-option');
+                
+                // 结束界面元素
+                this.endScreen = document.getElementById('end-screen');
+                this.endTitle = document.getElementById('end-title');
+                this.endMessage = document.getElementById('end-message');
+                this.restartButton = document.getElementById('restart-button');
+                
+                // AI控制按钮
+                this.gatheringBtn = document.getElementById('gathering-btn');
+                this.targetBtn = document.getElementById('target-btn');
+                this.aimoveBtn = document.getElementById('aimove-btn');
+            }
+            
+            renderMap() {
+                if (!this.tileElements || 
+                    this.tileElements.length !== this.game.height || 
+                    this.tileElements[0].length !== this.game.width) {
+                    // 首次渲染或地图尺寸改变，创建所有格子元素
+                    this.tileElements = [];
+                    this.gameMap.innerHTML = '';
+                    this.gameMap.style.setProperty('--map-size', this.game.width);
+                    
+                    for (let y = 0; y < this.game.height; y++) {
+                        const rowElements = [];
+                        for (let x = 0; x < this.game.width; x++) {
+                            const tile = this.game.map[y][x];
+                            const tileEl = this.createTileElement(tile);
+                            this.gameMap.appendChild(tileEl);
+                            rowElements.push(tileEl);
+                        }
+                        this.tileElements.push(rowElements);
+                    }
+                } else {
+                    // 更新现有格子元素
+                    for (let y = 0; y < this.game.height; y++) {
+                        for (let x = 0; x < this.game.width; x++) {
+                            const tile = this.game.map[y][x];
+                            const tileEl = this.tileElements[y][x];
+                            this.updateTileElement(tileEl, tile);
+                        }
+                    }
+                }
+                
+                // 更新AI状态信息
+                this.aiStatusEl.textContent = this.game.aiStatus;
+            }
+            
+            createTileElement(tile) {
+                const tileEl = document.createElement('div');
+                tileEl.className = 'tile';
+                
+                if (tile.lighten) {
+                    tileEl.classList.add('lighten');
+                }
+                
+                // 设置背景颜色
+                const bgColor = PLAYER_COLORS[tile.ownerId] || TERRAIN_COLORS[tile.type] || '#27ae60';
+                tileEl.style.background = `linear-gradient(135deg, ${this.adjustColor(bgColor, -20)}, ${bgColor})`;
+                
+                // 设置内容
+                tileEl.innerHTML = `
+                    <div class="tile-content">${tile.units > 0 ? tile.units : ''}</div>
+                    <div class="tile-type">${TERRAIN_SYMBOLS[tile.type] || ''}</div>
+                `;
+                
+                // 添加点击事件
+                tileEl.addEventListener('click', () => this.handleTileClick(tile.x, tile.y));
+                
+                return tileEl;
+            }
+            
+            updateTileElement(tileEl, tile) {
+                // 更新选中状态
+                if (this.game.selectedTile && 
+                    this.game.selectedTile.x === tile.x && 
+                    this.game.selectedTile.y === tile.y) {
+                    tileEl.classList.add('selected');
+                } else {
+                    tileEl.classList.remove('selected');
+                }
+                
+                // 更新高亮状态
+                if (tile.lighten) {
+                    tileEl.classList.add('lighten');
+                } else {
+                    tileEl.classList.remove('lighten');
+                }
+                
+                // 更新AI状态可视化（根据用户设置）
+                tileEl.classList.remove('gathering', 'gather-target', 'ai-move');
+                
+                if (tile.aiState === 'gathering' && this.showGathering) {
+                    tileEl.classList.add('gathering');
+                } else if (tile.aiState === 'target' && this.showTarget) {
+                    tileEl.classList.add('gather-target');
+                } else if (tile.aiState === 'ai-move' && this.showAiMove) {
+                    tileEl.classList.add('ai-move');
+                }
+                
+                // 更新战争迷雾状态 - 修复玩家被覆盖问题
+                if (this.game.hideFog && !tile.visible) {
+                    tileEl.classList.add('fog');
+                } else {
+                    tileEl.classList.remove('fog');
+                }
+                
+                // 确保玩家首都总是可见（即使战争迷雾开启）
+                if (tile.type === TileType.CAPITAL && tile.ownerId === 1) {
+                    tileEl.classList.remove('fog');
+                }
+                
+                // 更新背景颜色
+                const bgColor = PLAYER_COLORS[tile.ownerId] || TERRAIN_COLORS[tile.type] || '#27ae60';
+                tileEl.style.background = `linear-gradient(135deg, ${this.adjustColor(bgColor, -20)}, ${bgColor})`;
+                
+                // 更新内容
+                const contentEl = tileEl.querySelector('.tile-content');
+                if (contentEl) {
+                    contentEl.textContent = tile.units > 0 ? tile.units : '';
+                }
+                
+                const typeEl = tileEl.querySelector('.tile-type');
+                if (typeEl) {
+                    typeEl.textContent = TERRAIN_SYMBOLS[tile.type] || '';
+                }
+            }
+            
+            adjustColor(color, amount) {
+                let usePound = false;
+                
+                if (color[0] === "#") {
+                    color = color.slice(1);
+                    usePound = true;
+                }
+                
+                const num = parseInt(color, 16);
+                let r = (num >> 16) + amount;
+                
+                if (r > 255) r = 255;
+                else if (r < 0) r = 0;
+                
+                let b = ((num >> 8) & 0x00FF) + amount;
+                
+                if (b > 255) b = 255;
+                else if (b < 0) b = 0;
+                
+                let g = (num & 0x0000FF) + amount;
+                
+                if (g > 255) g = 255;
+                else if (g < 0) g = 0;
+                
+                return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
+            }
+            
+            handleTileClick(x, y) {
+                // 自动选择玩家1
+                this.playerSelect.value = "1";
+                
+                const tile = this.game.selectTile(x, y);
+                this.renderMap();
+            }
+            
+            handleDirectionClick(dir) {
+                if (!this.game.selectedTile) return;
+                
+                const playerId = parseInt(this.playerSelect.value);
+                const moveHalf = this.halfMove.checked;
+                const { x, y } = this.game.selectedTile;
+                
+                // 映射方向字符到枚举值
+                const directionMap = {
+                    'n': Direction.NORTH,
+                    's': Direction.SOUTH,
+                    'w': Direction.WEST,
+                    'e': Direction.EAST
+                };
+                
+                if (directionMap[dir] !== undefined) {
+                    this.game.appendOrder(playerId, x, y, directionMap[dir], moveHalf);
+                    this.game.selectedTile = null;
+                    this.renderMap();
+                    this.addMessage(`玩家 ${playerId}: 从 (${x},${y}) 向 ${dir.toUpperCase()} 移动`);
+                    
+                    // 如果是自动模式，立即执行tick
+                    if (this.game.autoMode) {
+                        setTimeout(() => {
+                            this.game.tick();
+                            this.updateUI();
+                            this.checkGameEnd();
+                        }, 300);
+                    }
+                }
+            }
+            
+            toggleAIVisualization(type) {
+                switch(type) {
+                    case 'gathering':
+                        this.showGathering = !this.showGathering;
+                        this.gatheringBtn.classList.toggle('active', this.showGathering);
+                        this.gatheringStatusEl.textContent = `集结兵力: ${this.showGathering ? '开启' : '关闭'}`;
+                        this.addMessage(`AI集结兵力可视化: ${this.showGathering ? '开启' : '关闭'}`);
+                        break;
+                    case 'target':
+                        this.showTarget = !this.showTarget;
+                        this.targetBtn.classList.toggle('active', this.showTarget);
+                        this.targetStatusEl.textContent = `攻击目标: ${this.showTarget ? '开启' : '关闭'}`;
+                        this.addMessage(`AI攻击目标可视化: ${this.showTarget ? '开启' : '关闭'}`);
+                        break;
+                    case 'aimove':
+                        this.showAiMove = !this.showAiMove;
+                        this.aimoveBtn.classList.toggle('active', this.showAiMove);
+                        this.aimoveStatusEl.textContent = `AI移动: ${this.showAiMove ? '开启' : '关闭'}`;
+                        this.addMessage(`AI移动可视化: ${this.showAiMove ? '开启' : '关闭'}`);
+                        break;
+                }
+                this.renderMap();
+            }
+            
+            toggleFogVisibility() {
+                const isFogHidden = this.game.toggleFogVisibility();
+                this.hideFogBtn.textContent = isFogHidden ? "显示所有格子" : "隐藏非明示格子";
+                this.hideFogBtn.classList.toggle('active', isFogHidden);
+                this.addMessage(`战争迷雾: ${isFogHidden ? '开启' : '关闭'}`);
+                this.renderMap();
+            }
+            
+            setupEventListeners() {
+                // 方向控制
+                document.querySelectorAll('.dir-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        this.handleDirectionClick(btn.dataset.dir);
+                    });
+                });
+                
+                // 控制按钮
+                this.tickBtn.addEventListener('click', () => {
+                    this.game.tick();
+                    this.updateUI();
+                    this.checkGameEnd();
+                });
+                
+                this.clearBtn.addEventListener('click', () => {
+                    const playerId = parseInt(this.playerSelect.value);
+                    this.game.clearQueue(playerId);
+                    this.addMessage(`已清空玩家 ${playerId} 的指令队列`);
+                });
+                
+                this.autoBtn.addEventListener('click', () => {
+                    const isAuto = this.game.toggleAutoMode();
+                    this.autoBtn.textContent = isAuto ? "关闭自动" : "自动模式";
+                    this.autoBtn.style.background = isAuto 
+                        ? "linear-gradient(to bottom, #e74c3c, #c0392b)" 
+                        : "linear-gradient(to bottom, #4a00e0, #8e2de2)";
+                    
+                    // 更新游戏状态指示器
+                    if (isAuto) {
+                        this.stateDot.className = "state-dot auto";
+                        this.stateText.textContent = "自动模式运行中";
+                        this.addMessage("已开启自动模式");
+                    } else {
+                        this.stateDot.className = "state-dot paused";
+                        this.stateText.textContent = "游戏暂停中";
+                        this.addMessage("已关闭自动模式");
+                    }
+                });
+                
+                // AI可视化控制按钮
+                this.gatheringBtn.addEventListener('click', () => {
+                    this.toggleAIVisualization('gathering');
+                });
+                
+                this.targetBtn.addEventListener('click', () => {
+                    this.toggleAIVisualization('target');
+                });
+                
+                this.aimoveBtn.addEventListener('click', () => {
+                    this.toggleAIVisualization('aimove');
+                });
+                
+                // 战争迷雾按钮
+                this.hideFogBtn.addEventListener('click', () => {
+                    this.toggleFogVisibility();
+                });
+                
+                // 键盘事件监听
+                document.addEventListener('keydown', (e) => {
+                    if (!this.game.selectedTile) return;
+                    
+                    const keyMap = {
+                        'w': 'n',
+                        'a': 'w',
+                        's': 's',
+                        'd': 'e'
+                    };
+                    
+                    if (keyMap[e.key.toLowerCase()]) {
+                        this.handleDirectionClick(keyMap[e.key.toLowerCase()]);
+                    }
+                });
+                
+                // 开始界面事件
+                this.sizeOptions.forEach(option => {
+                    option.addEventListener('click', () => {
+                        this.sizeOptions.forEach(opt => opt.classList.remove('selected'));
+                        option.classList.add('selected');
+                    });
+                });
+                
+                this.aiCountOptions.forEach(option => {
+                    option.addEventListener('click', () => {
+                        this.aiCountOptions.forEach(opt => opt.classList.remove('selected'));
+                        option.classList.add('selected');
+                    });
+                });
+                
+                this.startButton.addEventListener('click', () => {
+                    const selectedOption = document.querySelector('.size-option.selected');
+                    const size = parseInt(selectedOption.dataset.size);
+                    this.initGame(size, size);
+                    this.startScreen.style.display = 'none';
+                    this.updateUI();
+                });
+                
+                // 结束界面事件
+                this.restartButton.addEventListener('click', () => {
+                    this.endScreen.style.display = 'none';
+                    this.startScreen.style.display = 'flex';
+                });
+            }
+            
+            updateUI() {
+                this.halfturnEl.textContent = this.game.halfturnCount;
+                this.roundEl.textContent = this.game.roundCount;
+                this.currentPlayerEl.textContent = this.playerSelect.value;
+                this.renderMap();
+                this.renderMessages();
+                this.renderLeaderboard();
+            }
+            
+            addMessage(text) {
+                const messageEl = document.createElement('div');
+                messageEl.className = 'message';
+                messageEl.textContent = text;
+                this.messagesEl.prepend(messageEl);
+                
+                // 限制消息数量
+                if (this.messagesEl.children.length > 10) {
+                    this.messagesEl.removeChild(this.messagesEl.lastChild);
+                }
+            }
+            
+            renderMessages() {
+                this.messagesEl.innerHTML = '';
+                
+                if (this.game.gameState.messages.length === 0) {
+                    this.addMessage("等待游戏开始...");
+                    return;
+                }
+                
+                this.game.gameState.messages.forEach(msg => {
+                    this.addMessage(msg);
+                });
+            }
+            
+            renderLeaderboard() {
+                this.leaderboardEl.innerHTML = '';
+                
+                if (this.game.gameState.leaderboard.length === 0) {
+                    this.leaderboardEl.innerHTML = '<div class="team-rank">暂无排名数据</div>';
+                    return;
+                }
+                
+                this.game.gameState.leaderboard.forEach(team => {
+                    const teamEl = document.createElement('div');
+                    teamEl.className = 'team-rank';
+                    teamEl.innerHTML = `<strong>队伍 ${team.teamId}</strong> - 单位: ${team.totalUnits}, 领地: ${team.totalTiles}`;
+                    
+                    team.players.forEach(player => {
+                        const playerEl = document.createElement('div');
+                        playerEl.className = 'player-rank';
+                        playerEl.innerHTML = `
+                            <span>玩家 ${player.playerId} - ${player.defeated ? '已失败' : '活跃'}</span>
+                            <span>单位: ${player.units}, 领地: ${player.tiles}</span>
+                        `;
+                        teamEl.appendChild(playerEl);
+                    });
+                    
+                    this.leaderboardEl.appendChild(teamEl);
+                });
+            }
+            
+            checkGameEnd() {
+                if (this.game.gameOver) {
+                    if (this.game.winner === 1) {
+                        this.showEndScreen(true, "恭喜你击败了所有敌人！");
+                    } else {
+                        this.showEndScreen(false, "你的首都已被占领，下次再接再厉！");
+                    }
+                }
+            }
+            
+            showEndScreen(isVictory, message) {
+                if (isVictory) {
+                    this.endTitle.textContent = "胜利！";
+                    this.endTitle.className = "end-title victory";
+                } else {
+                    this.endTitle.textContent = "失败";
+                    this.endTitle.className = "end-title defeat";
+                }
+                
+                this.endMessage.textContent = message;
+                this.endScreen.style.display = "flex";
+            }
+        }
+        
+        // 初始化游戏
+        document.addEventListener('DOMContentLoaded', () => {
+            const gameUI = new GameUI();
+        });
+    </script>
+</body>
+</html>
